@@ -640,7 +640,7 @@ function finish(){
 [0,1].forEach(i=>$("#ch-"+i).addEventListener("click",()=>onChoice(i)));
 $("#btn-start").addEventListener("click",()=>{ restart(); });
 $("#btn-again").addEventListener("click",()=>{ restart(); });
-$("#btn-hub").addEventListener("click",()=>{ location.href="https://kimju1416.github.io/school-safety-drills/"; });
+$("#btn-hub").addEventListener("click",()=>{ sfx.alertStop(); go("#scr-intro"); });
 
 /* 영상 프리로드 */
 SCENES.forEach(sc=>{
