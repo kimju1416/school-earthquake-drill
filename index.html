@@ -259,6 +259,7 @@ button{font-family:inherit;border:0;cursor:pointer;background:none;color:inherit
     <div class="outro">이제 떠올려 보자.<br><b>우리 학교의 실제 지진 대피 경로.</b><br>책상은 어디에 있고, 계단은 어디로 이어지는가?</div>
     <div style="margin-top:26px;display:grid;gap:10px">
       <button class="btn" id="btn-again">다시 도전</button>
+      <button class="btn sub" id="btn-hub">처음 화면으로</button>
     </div>
   </div>
 </section>
@@ -340,7 +341,7 @@ const SND = {
   wrong: mkSound("sfx/wrong.mp3", .8),
   glasshit: mkSound("sfx/glasshit.mp3", .8),
   collapse: mkSound("sfx/collapse.mp3", .85),
-  alert: mkSound("sfx/alert.mp3", .55),
+  alert: mkSound("sfx/alert.mp3", .3),
   stumble: mkSound("sfx/stumble.mp3", .8),
   elevatorhum: mkSound("sfx/elevatorhum.mp3", .5),
 };
@@ -459,6 +460,7 @@ function sceneChip(){
 function playScene(replayChoiceOnly){
   const sc=SCENES[S.idx];
   phase="watch"; sceneChip();
+  if(S.idx===0) sfx.alarmOn(); else sfx.alarmOff(); /* 흔들림은 S1에서만 — 멈춘 뒤엔 실제로 조용해진다 */
   $("#wrongcap").classList.remove("on");
   $("#choices").classList.remove("on");
   $("#sit-cap").classList.remove("on");
@@ -591,6 +593,7 @@ const BADGE={fast:["b-fast","즉답 정답"],ok:["b-ok","정답"],bad:["b-bad","
 function finish(){
   phase="done";
   sfx.alarmOff(); sfx.alert();
+  setTimeout(()=>sfx.alertStop(),3200); /* 결과 화면에서 알림음이 오래 시끄럽게 이어지지 않도록 */
   const wrongs=S.records.reduce((a,r)=>a+r.wrong,0);
   const hesis=S.records.reduce((a,r)=>a+r.hesi,0);
   const miss=wrongs+hesis;
@@ -627,6 +630,7 @@ function finish(){
 [0,1].forEach(i=>$("#ch-"+i).addEventListener("click",()=>onChoice(i)));
 $("#btn-start").addEventListener("click",()=>{ restart(); });
 $("#btn-again").addEventListener("click",()=>{ restart(); });
+$("#btn-hub").addEventListener("click",()=>{ location.href="https://kimju1416.github.io/school-safety-drills/"; });
 
 /* 영상 프리로드 */
 SCENES.forEach(sc=>{
