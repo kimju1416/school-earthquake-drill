@@ -1,0 +1,641 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
+<title>흔들림이 멈출 때까지 — 학교 지진 대피 판단훈련</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
+<style>
+:root{
+  --or:#F2A93C; --or-dk:#C97F1B; --bg:#141312; --bg2:#1A1817; --card:#201D1B;
+  --bd:#332E2A; --tx:#F2EFEC; --tx2:#8F8880; --ok:#3ECF8E; --err:#FF4D4D; --sink:#0C0B0A;
+  --o2hi:#3ED6C4; --o2mid:#F5C542; --o2lo:#FF4D4D;
+}
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{height:100%}
+body{background:var(--bg);color:var(--tx);font-family:Pretendard,-apple-system,sans-serif;overflow:hidden}
+button{font-family:inherit;border:0;cursor:pointer;background:none;color:inherit}
+
+.screen{display:none;height:100dvh;flex-direction:column;overflow-y:auto}
+.screen.on{display:flex}
+.wrap{width:100%;max-width:480px;margin:0 auto;padding:24px 20px 40px}
+.btn{display:block;width:100%;padding:16px;border-radius:12px;font-size:17px;font-weight:800;
+  background:linear-gradient(90deg,var(--or-dk),var(--or));color:#180C06;
+  box-shadow:0 4px 0 var(--sink);transition:transform .08s}
+.btn:active{transform:translateY(3px);box-shadow:0 1px 0 var(--sink)}
+.btn.sub{background:var(--card);color:var(--tx);border:1.5px solid var(--bd)}
+.tag{display:inline-block;padding:4px 12px;border-radius:999px;font-size:12px;font-weight:800;letter-spacing:.08em}
+.tag.orange{background:rgba(255,107,53,.13);color:var(--or);border:1px solid rgba(255,107,53,.4)}
+.tag.danger{background:rgba(255,77,77,.12);color:var(--err);border:1px solid rgba(255,77,77,.4)}
+.tag.safe{background:rgba(62,207,142,.12);color:var(--ok);border:1px solid rgba(62,207,142,.4)}
+
+/* ═══════ 인트로 ═══════ */
+#scr-intro{justify-content:center;text-align:center;background:
+  radial-gradient(120% 90% at 50% -10%,rgba(255,107,53,.14),transparent 60%),var(--bg)}
+.intro-label{color:var(--or);font-weight:800;letter-spacing:.24em;font-size:13px;margin-bottom:16px}
+.intro-title{font-size:46px;font-weight:900;line-height:1.16;letter-spacing:-.02em}
+.intro-title em{font-style:normal;color:var(--or)}
+.intro-title small{display:block;font-size:17px;font-weight:800;color:var(--tx2);letter-spacing:.02em;margin-top:12px}
+.intro-sub{color:var(--tx2);font-size:15px;line-height:1.75;margin:20px 0 6px}
+.intro-sub b{color:var(--tx)}
+.howto{margin:26px 0;display:grid;gap:10px;text-align:left}
+.h-item{display:flex;align-items:center;gap:14px;background:var(--card);border:1.5px solid var(--bd);border-radius:14px;padding:14px 16px}
+.h-ico{width:44px;height:44px;flex:none;border-radius:10px;background:var(--bg2);border:1.5px solid var(--bd);
+  display:flex;align-items:center;justify-content:center;color:var(--or);font-size:19px;font-weight:900}
+.h-item b{display:block;font-size:15px}
+.h-item span{display:block;color:var(--tx2);font-size:13px;margin-top:2px;line-height:1.5}
+.dev-note{margin-top:18px;color:#5C564F;font-size:12px}
+
+/* ═══════ 스테이지 ═══════ */
+#scr-stage{position:relative;overflow:hidden;background:#000}
+.stage-bg{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;
+  transition:opacity .5s;transform:scale(1)}
+.stage-bg.tense{transition:opacity .5s,transform 4.2s cubic-bezier(.25,.1,.35,1);transform:scale(1.09)}
+.stage-bg.swap{opacity:0}
+#bg-b{opacity:0}
+.scrim-top{position:absolute;left:0;right:0;top:0;height:120px;z-index:2;
+  background:linear-gradient(180deg,rgba(10,9,8,.82),transparent)}
+.scrim-bot{position:absolute;left:0;right:0;bottom:0;height:52%;z-index:2;pointer-events:none;
+  background:linear-gradient(0deg,rgba(10,9,8,.94) 18%,rgba(10,9,8,.55) 55%,transparent)}
+.vig{position:absolute;inset:0;z-index:3;pointer-events:none;opacity:0;transition:opacity .4s;
+  box-shadow:inset 0 0 90px 30px rgba(255,60,30,.55)}
+.vig.on{opacity:1;animation:vigpulse .55s infinite alternate}
+@keyframes vigpulse{from{opacity:.45}to{opacity:1}}
+#flash{position:absolute;inset:0;z-index:9;pointer-events:none;opacity:0;background:rgba(255,50,30,.35)}
+#flash.hit{animation:flashhit .6s}
+@keyframes flashhit{0%{opacity:1}100%{opacity:0}}
+#scr-stage.shake .stage-inner{animation:shake .5s}
+.stage-inner{position:absolute;inset:0}
+@keyframes shake{0%,100%{transform:translate(0,0)}15%{transform:translate(-10px,5px) rotate(-1.2deg)}
+  30%{transform:translate(9px,-6px) rotate(1deg)}45%{transform:translate(-8px,3px)}60%{transform:translate(7px,-3px)}80%{transform:translate(-3px,1px)}}
+
+/* HUD */
+.hud{position:absolute;top:0;left:0;right:0;z-index:10;display:flex;align-items:center;gap:12px;
+  padding:calc(10px + env(safe-area-inset-top)) 14px 10px}
+.scene-chip{flex:none;background:rgba(12,11,10,.72);border:1.5px solid var(--bd);border-radius:999px;
+  padding:6px 13px;font-size:13px;font-weight:800;color:var(--tx2);backdrop-filter:blur(4px)}
+.scene-chip b{color:var(--or)}
+.o2box{flex:1;background:rgba(12,11,10,.72);border:1.5px solid var(--bd);border-radius:999px;
+  padding:5px 13px;display:flex;align-items:center;gap:9px;backdrop-filter:blur(4px)}
+.o2box .lbl{font-size:11px;font-weight:900;letter-spacing:.1em;color:var(--o2hi)}
+.o2track{flex:1;height:9px;border-radius:99px;background:#2A2622;overflow:hidden}
+#o2bar{display:block;height:100%;width:100%;border-radius:99px;background:var(--o2hi);transition:width .5s,background .5s}
+#o2pct{font-size:12px;font-weight:900;font-variant-numeric:tabular-nums;color:var(--tx);min-width:34px;text-align:right}
+.o2box.low .lbl,#o2pct.low{color:var(--o2lo)}
+.o2box.low{animation:o2blink .6s infinite alternate}
+@keyframes o2blink{from{border-color:var(--bd)}to{border-color:var(--o2lo)}}
+#btn-mute{flex:none;width:36px;height:36px;border-radius:50%;background:rgba(12,11,10,.72);
+  border:1.5px solid var(--bd);font-size:15px;backdrop-filter:blur(4px)}
+
+/* 하단 — 상황 자막 / 선택 */
+.bottom{position:absolute;left:0;right:0;bottom:0;z-index:10;padding:0 14px calc(18px + env(safe-area-inset-bottom));
+  max-width:520px;margin:0 auto}
+.sit-cap{background:rgba(14,12,11,.82);border:1.5px solid var(--bd);
+  border-radius:12px;padding:13px 16px;font-size:16px;font-weight:700;line-height:1.55;backdrop-filter:blur(6px);
+  opacity:0;transform:translateY(14px);transition:opacity .4s,transform .4s}
+.sit-cap.on{opacity:1;transform:none}
+.sit-cap b{color:var(--or)}
+.choices{margin-top:12px;display:grid;grid-template-columns:1fr 1fr;gap:10px;
+  opacity:0;transform:translateY(16px);pointer-events:none;transition:opacity .3s,transform .3s}
+.choices.on{opacity:1;transform:none;pointer-events:auto}
+.choice{min-height:96px;border-radius:14px;padding:14px 13px;font-size:15px;font-weight:800;line-height:1.45;
+  background:rgba(24,21,19,.92);border:2px solid var(--bd);color:var(--tx);text-align:left;
+  backdrop-filter:blur(6px);box-shadow:0 4px 0 var(--sink);transition:transform .08s,border-color .15s}
+.choice:active{transform:translateY(3px);box-shadow:0 1px 0 var(--sink)}
+.choice .no{display:block;color:var(--or);font-size:12px;font-weight:900;letter-spacing:.1em;margin-bottom:6px}
+.choice.picked-ok{border-color:var(--ok)}
+.choice.picked-bad{border-color:var(--err)}
+
+/* 카운트다운 — HUD 아래 상단 중앙 */
+.cdwrap{position:absolute;left:50%;transform:translateX(-50%);top:calc(74px + env(safe-area-inset-top));z-index:11;
+  width:72px;height:72px;opacity:0;transition:opacity .3s;pointer-events:none}
+.cdwrap.on{opacity:1}
+.cdwrap svg{width:72px;height:72px;transform:rotate(-90deg)}
+.cd-track{fill:rgba(12,11,10,.8);stroke:#2E2A26;stroke-width:5}
+#cd-ring{fill:none;stroke:var(--or);stroke-width:5;stroke-linecap:round;
+  stroke-dasharray:188.5;stroke-dashoffset:0}
+#cd-num{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+  font-size:26px;font-weight:900;font-variant-numeric:tabular-nums;color:var(--tx)}
+
+/* 판정 배너 */
+.judge{position:absolute;top:34%;left:50%;transform:translate(-50%,-50%) scale(.6);z-index:12;
+  font-size:38px;font-weight:900;letter-spacing:.02em;opacity:0;pointer-events:none;text-align:center;
+  text-shadow:0 3px 18px rgba(0,0,0,.8);white-space:nowrap}
+.judge.show{animation:judgepop .9s forwards}
+@keyframes judgepop{0%{opacity:0;transform:translate(-50%,-50%) scale(.6)}16%{opacity:1;transform:translate(-50%,-50%) scale(1.1)}
+  75%{opacity:1;transform:translate(-50%,-50%) scale(1)}100%{opacity:0;transform:translate(-50%,-46%) scale(1)}}
+.judge.ok{color:var(--ok)}.judge.bad{color:var(--err)}.judge.hesi{color:#F5C542}
+.judge small{display:block;font-size:15px;font-weight:800;color:var(--tx);margin-top:4px}
+
+/* 오답 결과 오버레이 */
+#wrongcap{position:absolute;left:14px;right:14px;top:20%;z-index:12;text-align:center;
+  opacity:0;transition:opacity .5s;pointer-events:none}
+#wrongcap.on{opacity:1}
+#wrongcap .wc-in{display:inline-block;background:rgba(14,10,9,.86);border:1.5px solid rgba(255,77,77,.5);
+  border-radius:14px;padding:14px 20px;font-size:17px;font-weight:800;line-height:1.6;backdrop-filter:blur(6px)}
+#wrongcap .wc-in b{color:var(--err)}
+
+/* ═══════ 모달 ═══════ */
+#veil{position:fixed;inset:0;z-index:50;background:rgba(8,7,6,.74);display:none;align-items:flex-end;justify-content:center}
+#veil.on{display:flex}
+.sheet{width:100%;max-width:480px;background:var(--bg2);border-radius:20px 20px 0 0;border:2px solid var(--bd);border-bottom:0;
+  padding:24px 20px calc(28px + env(safe-area-inset-bottom));animation:sheetup .28s}
+@keyframes sheetup{from{transform:translateY(40px);opacity:0}to{transform:translateY(0);opacity:1}}
+.m-title{font-size:21px;font-weight:900;margin:12px 0 8px;line-height:1.4}
+.m-body{color:var(--tx2);font-size:15px;line-height:1.75;margin-bottom:18px}
+.m-body b{color:var(--tx)}
+.rulecard{background:var(--card);border:1.5px solid var(--bd);border-radius:12px;
+  padding:13px 15px;margin-bottom:18px}
+.rulecard b{display:block;font-size:15px;color:var(--or)}
+.rulecard span{display:block;color:var(--tx2);font-size:13px;margin-top:5px;line-height:1.6}
+
+/* ═══════ 결과 ═══════ */
+#scr-result{background:radial-gradient(120% 80% at 50% -10%,rgba(255,107,53,.12),transparent 60%),var(--bg)}
+.r-head{text-align:center;margin-bottom:8px}
+.r-grade{font-size:84px;font-weight:900;color:var(--or);line-height:1.05}
+.r-title{font-size:20px;font-weight:900;margin-top:6px}
+.r-sub{color:var(--tx2);font-size:14px;margin-top:6px;line-height:1.6}
+.r-sub b{color:var(--tx)}
+.r-o2{margin:16px 0 4px;background:var(--card);border:1.5px solid var(--bd);border-radius:14px;padding:14px 16px}
+.r-o2 .lbl{font-size:12px;font-weight:900;letter-spacing:.1em;color:var(--tx2);margin-bottom:8px;display:flex;justify-content:space-between}
+.r-o2 .lbl b{color:var(--tx)}
+.sec-label{margin-top:26px;margin-bottom:10px;color:var(--or);font-weight:800;font-size:13px;letter-spacing:.14em}
+.tl{display:grid;gap:8px}
+.tl-row{background:var(--card);border:1.5px solid var(--bd);border-radius:13px;padding:13px 15px}
+.tl-row.flag{border-color:rgba(255,77,77,.45)}
+.tl-top{display:flex;align-items:center;gap:9px;margin-bottom:7px}
+.tl-top .loc{font-size:14px;font-weight:900}
+.tl-badge{margin-left:auto;flex:none;font-size:11.5px;font-weight:900;border-radius:7px;padding:4px 9px;letter-spacing:.04em}
+.tl-badge.b-fast{background:rgba(62,207,142,.14);color:var(--ok)}
+.tl-badge.b-ok{background:rgba(255,107,53,.14);color:var(--or)}
+.tl-badge.b-bad{background:rgba(255,77,77,.14);color:var(--err)}
+.tl-badge.b-hesi{background:rgba(245,197,66,.14);color:#F5C542}
+.tl-pick{font-size:13px;color:var(--tx2);line-height:1.65}
+.tl-pick b{color:var(--tx);font-weight:700}
+.tl-pick .bad{color:var(--err);font-weight:700}
+.tl-rule{margin-top:8px;padding-top:8px;border-top:1px dashed var(--bd);font-size:13px;color:var(--tx2);line-height:1.6}
+.tl-rule b{color:var(--or)}
+.t-note{margin-top:10px;background:rgba(245,197,66,.07);border:1.5px solid rgba(245,197,66,.3);border-radius:12px;
+  padding:12px 15px;font-size:13px;color:#E8C96A;line-height:1.65}
+.outro{margin-top:26px;text-align:center;color:var(--tx2);font-size:14.5px;line-height:1.8}
+.outro b{color:var(--tx)}
+#toast{position:fixed;left:50%;bottom:26px;transform:translateX(-50%);z-index:60;background:rgba(12,11,10,.92);
+  border:1.5px solid var(--bd);color:var(--tx);padding:10px 18px;border-radius:999px;font-size:14px;font-weight:700;
+  opacity:0;transition:opacity .25s;pointer-events:none;white-space:nowrap}
+#toast.on{opacity:1}
+@media (max-width:360px){.intro-title{font-size:38px}.choice{font-size:14px;min-height:88px}}
+</style>
+</head>
+<body>
+
+<!-- ═══════════ 인트로 ═══════════ -->
+<section class="screen on" id="scr-intro">
+  <div class="wrap">
+    <div class="intro-label">학교 대피훈련 시리즈 ③ 지진</div>
+    <h1 class="intro-title">흔들림이<br><em>멈출 때</em>까지<small>당황해서 뛰면, 그게 더 위험하다</small></h1>
+    <p class="intro-sub">지금은 수업 중. 갑자기 <b>땅이 흔들린다.</b><br>교실에서 운동장까지 — <b>여섯 번의 판단</b>이 너를 기다린다.</p>
+    <div class="howto">
+      <div class="h-item"><i class="h-ico">안전</i><div><b>안전 게이지 100%로 시작</b><span>오답 −35% · 머뭇거림 −20% · 0%가 되면 쓰러진다</span></div></div>
+      <div class="h-item"><i class="h-ico">4s</i><div><b>선택 시간은 단 4초</b><span>흔들리는 그 순간은 기다려 주지 않는다 — 고민도 대가가 있다</span></div></div>
+      <div class="h-item"><i class="h-ico">!</i><div><b>틀려도 끝이 아니다</b><span>왜 틀렸는지 그 자리에서 확인하고 다시 선택한다</span></div></div>
+    </div>
+    <button class="btn" id="btn-start">대피 시작</button>
+    <div class="dev-note">AI 실사 영상 8컷 적용판</div>
+  </div>
+</section>
+
+<!-- ═══════════ 스테이지 ═══════════ -->
+<section class="screen" id="scr-stage">
+  <div class="stage-inner">
+    <video class="stage-bg" id="bg-a" muted playsinline loop preload="auto"></video>
+    <video class="stage-bg" id="bg-b" muted playsinline loop preload="auto"></video>
+    <div class="scrim-top"></div>
+    <div class="scrim-bot"></div>
+    <div class="vig" id="vig"></div>
+    <div id="flash"></div>
+
+    <div class="hud">
+      <span class="scene-chip" id="scene-chip"><b>S1</b> / 6 · 교실</span>
+      <div class="o2box" id="o2box">
+        <span class="lbl">안전</span>
+        <span class="o2track"><b id="o2bar"></b></span>
+        <span id="o2pct">100%</span>
+      </div>
+      <button id="btn-mute" aria-label="소리 켜기/끄기">🔊</button>
+    </div>
+
+    <div id="wrongcap"><span class="wc-in" id="wrongcap-tx"></span></div>
+    <div class="judge" id="judge"></div>
+    <div class="cdwrap" id="cdwrap">
+      <svg viewBox="0 0 72 72"><circle class="cd-track" cx="36" cy="36" r="30"/><circle id="cd-ring" cx="36" cy="36" r="30"/></svg>
+      <span id="cd-num">4</span>
+    </div>
+
+    <div class="bottom">
+      <div class="sit-cap" id="sit-cap"></div>
+      <div class="choices" id="choices">
+        <button class="choice" id="ch-0"><span class="no">선택 A</span><span class="ch-tx"></span></button>
+        <button class="choice" id="ch-1"><span class="no">선택 B</span><span class="ch-tx"></span></button>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════ 결과 ═══════════ -->
+<section class="screen" id="scr-result">
+  <div class="wrap">
+    <div class="r-head">
+      <div class="r-grade" id="r-grade">S</div>
+      <div class="r-title" id="r-title">무사히 운동장까지 대피했다</div>
+      <div class="r-sub" id="r-sub"></div>
+    </div>
+    <div class="r-o2">
+      <div class="lbl"><span>남은 안전 게이지</span><b id="r-o2pct">100%</b></div>
+      <span class="o2track" style="display:block;height:10px"><b id="r-o2bar" style="display:block;height:100%;border-radius:99px;background:var(--o2hi)"></b></span>
+    </div>
+    <div class="sec-label">판단 복습 — 여섯 번의 갈림길</div>
+    <div class="tl" id="r-tl"></div>
+    <div id="r-tnote"></div>
+    <div class="outro">이제 떠올려 보자.<br><b>우리 학교의 실제 지진 대피 경로.</b><br>책상은 어디에 있고, 계단은 어디로 이어지는가?</div>
+    <div style="margin-top:26px;display:grid;gap:10px">
+      <button class="btn" id="btn-again">다시 도전</button>
+    </div>
+  </div>
+</section>
+
+<!-- 모달 -->
+<div id="veil"><div class="sheet">
+  <span class="tag danger" id="m-tag">알림</span>
+  <div class="m-title" id="m-title"></div>
+  <div class="m-body" id="m-body"></div>
+  <div id="m-rule"></div>
+  <button class="btn" id="m-ok">확인</button>
+</div></div>
+
+<div id="toast"></div>
+
+<script>
+"use strict";
+const $ = s => document.querySelector(s);
+
+/* ══════════ 장면 데이터 (결정 트리) ══════════ */
+const SCENES = [
+  { id:"S1", loc:"교실", video:"video/s1.mp4",
+    sit:"수업 중 — 갑자기 <b>땅이 흔들리기 시작한다.</b> 책상이 흔들리고 물건이 떨어진다.",
+    good:"책상 밑으로 들어가 다리를 꽉 잡는다",
+    badc:"놀라서 창가로 뛰어간다",
+    wrongFx:{ type:"glass", text:"쨍그랑 — <b>창문 유리가 깨지며 파편이 쏟아졌다</b>" },
+    rule:"몸을 낮춰 책상 밑으로, 다리를 꼭 잡는다",
+    why:"머리 위 낙하물이 가장 큰 부상 원인이다. 책상은 훌륭한 방패다." },
+  { id:"S2", loc:"교실", video:"video/s2.mp4",
+    sit:"흔들림이 멈췄다. 책상 밑에서 나와 <b>출구를 확보해야 한다.</b>",
+    good:"문을 열어 출구를 확보한 뒤 이동한다",
+    badc:"이제 끝났겠지, 자리에 그대로 앉아있는다",
+    wrongFx:{ type:"shake", text:"쿵 — <b>여진이 다시 덮쳐왔다</b>" },
+    rule:"흔들림이 멎으면 즉시 문을 열어 출구부터 확보한다",
+    why:"여진은 예고 없이 온다. 문이 뒤틀려 잠기기 전에 열어둬야 갇히지 않는다." },
+  { id:"S3", loc:"갈림길", video:"video/s3.mp4",
+    sit:"갈림길 — 눈앞에 <b>엘리베이터</b>, 그 옆에 <b>계단실 표지</b>. 버튼에 불이 들어와 있다.",
+    good:"계단으로 간다",
+    badc:"엘리베이터를 탄다",
+    wrongFx:{ type:"video", video:"video/wrongA.mp4", snd:"elevatorhum", text:"덜컹 — <b>정전으로 엘리베이터가 멈췄다.</b> 비상등만 깜빡인다" },
+    rule:"지진 시 엘리베이터는 절대 타지 않는다",
+    why:"정전으로 멈추면 그대로 갇힌다. 무조건 계단이다." },
+  { id:"S4", loc:"계단실", video:"video/s4.mp4",
+    sit:"계단실 — 바닥에 <b>깨진 유리조각</b>이 흩어져 있다. 다급한 발소리가 울린다.",
+    good:"신발을 신고 질서있게 내려간다",
+    badc:"맨발로 서둘러 내려간다",
+    wrongFx:{ type:"glass", text:"윽 — <b>유리 조각을 밟아 발을 다쳤다</b>" },
+    rule:"신발을 신고, 질서있게 우측통행으로 내려간다",
+    why:"지진 후 바닥엔 깨진 유리·잔해가 많다. 서두르다 다치면 대피가 더 늦어진다." },
+  { id:"S5", loc:"건물 밖 출구", video:"video/s5.mp4",
+    sit:"건물 밖으로 나왔다. 왼쪽엔 <b>담장과 간판이 위태롭게 흔들리고</b>, 오른쪽엔 넓은 공터가 있다.",
+    good:"낙하물 없는 넓은 공터로 이동한다",
+    badc:"가까운 담장 옆에서 잠시 숨을 고른다",
+    wrongFx:{ type:"video", video:"video/wrongB.mp4", text:"우르르 — <b>여진에 담장과 간판이 무너져 내렸다</b>" },
+    rule:"건물·담장·간판 근처를 벗어나 넓은 공터로 이동한다",
+    why:"여진은 무너진 것을 더 무너뜨린다. 벽과 간판에서 최대한 멀어져야 한다." },
+  { id:"S6", loc:"운동장", video:"video/s6.mp4",
+    sit:"운동장 — 반별로 대열이 모이는 중이다. 흙먼지가 가라앉고 있다.",
+    good:"건물에서 떨어진 곳에서 인원 보고를 한다",
+    badc:"건물 가까이 모여 상황을 구경한다",
+    wrongFx:{ type:"shake", text:"쿵 — <b>여진에 건물 잔해가 떨어졌다</b>" },
+    rule:"대피 후엔 건물에서 충분히 떨어진 곳에서 인원 보고",
+    why:"여진은 본진 이후에도 계속된다. 건물 가까이 있으면 낙하물 위험이 남아있다." },
+];
+const CHOICE_MS = 4000, SIT_MS = 2800, FAST_MS = 1500;
+
+/* ══════════ 사운드 (Mixkit 무료 SFX, sfx/ 폴더) ══════════ */
+let muted = false;
+function mkSound(src,vol,loop){
+  const a = new Audio(src);
+  a.preload = "auto"; a.volume = vol; a.loop = !!loop;
+  return a;
+}
+const SND = {
+  alarm: mkSound("sfx/rumble.mp3", .35, true),
+  heartbeat: mkSound("sfx/heartbeat.mp3", .9),
+  correct: mkSound("sfx/correct.mp3", .8),
+  correctFast: mkSound("sfx/correct_fast.mp3", .8),
+  wrong: mkSound("sfx/wrong.mp3", .8),
+  glasshit: mkSound("sfx/glasshit.mp3", .8),
+  collapse: mkSound("sfx/collapse.mp3", .85),
+  alert: mkSound("sfx/alert.mp3", .55),
+  stumble: mkSound("sfx/stumble.mp3", .8),
+  elevatorhum: mkSound("sfx/elevatorhum.mp3", .5),
+};
+function play(a){
+  if(muted) return;
+  try{ a.currentTime=0; a.play().catch(()=>{}); }catch(e){}
+}
+const sfx = {
+  alarmOn(){ if(muted) return; try{ SND.alarm.currentTime=0; SND.alarm.play().catch(()=>{}); }catch(e){} },
+  alarmOff(){ SND.alarm.pause(); SND.alarm.currentTime=0; },
+  heart(){ play(SND.heartbeat); },
+  ok(){ play(SND.correct); },
+  fast(){ play(SND.correctFast); },
+  bad(){ play(SND.wrong); },
+  glasshit(){ play(SND.glasshit); },
+  stumble(){ play(SND.stumble); },
+  collapse(){ play(SND.collapse); },
+  alert(){ play(SND.alert); },
+  elevatorhum(){ play(SND.elevatorhum); },
+};
+$("#btn-mute").addEventListener("click",()=>{
+  muted=!muted; $("#btn-mute").textContent=muted?"🔇":"🔊";
+  if(muted) sfx.alarmOff(); else if($("#scr-stage").classList.contains("on")) sfx.alarmOn();
+});
+
+/* ══════════ 상태 ══════════ */
+const S = { o2:100, score:0, idx:0, records:[] };
+/* records[i] = { first:'fast'|'ok'|'bad'|'hesi', firstPickText, wrong:n, hesi:n, rt } — 첫 시도 기준 복습용 */
+
+function setO2(v){
+  S.o2=Math.max(0,Math.min(100,v));
+  const bar=$("#o2bar"),pct=$("#o2pct"),box=$("#o2box");
+  bar.style.width=S.o2+"%";
+  bar.style.background = S.o2>60?"var(--o2hi)":S.o2>35?"var(--o2mid)":"var(--o2lo)";
+  pct.textContent=Math.round(S.o2)+"%";
+  pct.classList.toggle("low",S.o2<=35);
+  box.classList.toggle("low",S.o2<=35);
+  $("#vig").classList.toggle("on",S.o2<=35);
+}
+function loseO2(n){
+  setO2(S.o2-n);
+  const f=$("#flash"); f.classList.remove("hit"); void f.offsetWidth; f.classList.add("hit");
+  if(navigator.vibrate) navigator.vibrate([80,50,80]);
+}
+let toastTimer=null;
+function toast(msg,ms){
+  const t=$("#toast"); t.textContent=msg; t.classList.add("on");
+  clearTimeout(toastTimer); toastTimer=setTimeout(()=>t.classList.remove("on"),ms||1700);
+}
+let modalCb=null;
+function modal({tag,tagCls,title,body,rule,why,btn,cb}){
+  $("#m-tag").textContent=tag; $("#m-tag").className="tag "+(tagCls||"danger");
+  $("#m-title").textContent=title; $("#m-body").innerHTML=body||"";
+  $("#m-rule").innerHTML = rule ? '<div class="rulecard"><b>'+rule+'</b><span>'+why+'</span></div>' : "";
+  $("#m-ok").textContent=btn||"확인";
+  modalCb=cb||null;
+  $("#veil").classList.add("on");
+}
+$("#m-ok").addEventListener("click",()=>{
+  $("#veil").classList.remove("on");
+  if(modalCb){ const f=modalCb; modalCb=null; f(); }
+});
+function go(id){
+  document.querySelectorAll(".screen").forEach(s=>s.classList.remove("on"));
+  $(id).classList.add("on");
+  if(id!=="#scr-stage") window.scrollTo(0,0);
+}
+
+/* ══════════ 배경 이중버퍼 크로스페이드 ══════════ */
+let bgFront=$("#bg-a"), bgBack=$("#bg-b");
+function setBg(src,instant){
+  if(instant){
+    bgFront.src=src; bgFront.currentTime=0; bgFront.play().catch(()=>{});
+    bgFront.style.opacity=1; bgBack.style.opacity=0;
+    return;
+  }
+  bgBack.src=src; bgBack.classList.remove("tense");
+  bgBack.currentTime=0; bgBack.play().catch(()=>{});
+  bgBack.style.opacity=1; bgFront.style.opacity=0;
+  bgFront.pause();
+  const t=bgFront; bgFront=bgBack; bgBack=t;
+}
+function tense(on){ bgFront.classList.toggle("tense",on); }
+
+/* ══════════ 카운트다운 ══════════ */
+const CIRC=188.5;
+let cd={raf:0,t0:0,active:false,onTimeout:null};
+function cdStart(onTimeout){
+  cd.active=true; cd.t0=performance.now(); cd.onTimeout=onTimeout;
+  $("#cdwrap").classList.add("on");
+  let lastBeat=0, lastNum=-1;
+  const step=now=>{
+    if(!cd.active) return;
+    const el=now-cd.t0, remain=Math.max(0,CHOICE_MS-el), p=remain/CHOICE_MS;
+    $("#cd-ring").style.strokeDashoffset=CIRC*(1-p);
+    $("#cd-ring").style.stroke = p>.4?"var(--or)":"var(--err)";
+    const n=Math.ceil(remain/1000);
+    if(n!==lastNum){ lastNum=n; $("#cd-num").textContent=n; }
+    const beatGap=280+p*420; /* 심박 고조: 700ms → 280ms */
+    if(now-lastBeat>beatGap){ lastBeat=now; sfx.heart(); }
+    if(remain<=0){ cd.active=false; $("#cdwrap").classList.remove("on"); const f=cd.onTimeout; cd.onTimeout=null; if(f)f(); return; }
+    cd.raf=requestAnimationFrame(step);
+  };
+  cd.raf=requestAnimationFrame(step);
+}
+function cdStop(){ cd.active=false; cancelAnimationFrame(cd.raf); $("#cdwrap").classList.remove("on"); }
+
+/* ══════════ 스테이지 진행 ══════════ */
+let phase="idle", choiceT0=0, curMap=null; /* curMap: [{text,correct}] 좌우 랜덤 반영 */
+
+function sceneChip(){
+  const sc=SCENES[S.idx];
+  $("#scene-chip").innerHTML="<b>"+sc.id+"</b> / 6 · "+sc.loc;
+}
+function playScene(replayChoiceOnly){
+  const sc=SCENES[S.idx];
+  phase="watch"; sceneChip();
+  $("#wrongcap").classList.remove("on");
+  $("#choices").classList.remove("on");
+  $("#sit-cap").classList.remove("on");
+  tense(false);
+  if(!replayChoiceOnly) setBg(sc.video);
+  else setBg(sc.video); /* 오답 영상에서 원장면 복귀 */
+  setTimeout(()=>{
+    $("#sit-cap").innerHTML=sc.sit;
+    $("#sit-cap").classList.add("on");
+  },550);
+  setTimeout(()=>openChoices(),replayChoiceOnly?900:SIT_MS);
+}
+function openChoices(){
+  const sc=SCENES[S.idx];
+  phase="choice";
+  /* 좌우 랜덤 배치 */
+  const pair=[{text:sc.good,correct:true},{text:sc.badc,correct:false}];
+  if(Math.random()<.5) pair.reverse();
+  curMap=pair;
+  [0,1].forEach(i=>{
+    const b=$("#ch-"+i);
+    b.className="choice";
+    b.querySelector(".ch-tx").textContent=pair[i].text;
+    b.dataset.correct=pair[i].correct?"1":"0";
+  });
+  $("#choices").classList.add("on");
+  tense(true); /* 4초 줌인 */
+  choiceT0=performance.now();
+  cdStart(()=>onTimeout());
+}
+function showJudge(cls,main,sub){
+  const j=$("#judge");
+  j.className="judge "+cls;
+  j.innerHTML=main+(sub?"<small>"+sub+"</small>":"");
+  void j.offsetWidth; j.classList.add("show");
+}
+function rec(){
+  if(!S.records[S.idx]) S.records[S.idx]={first:null,firstPickText:null,wrong:0,hesi:0,rt:null};
+  return S.records[S.idx];
+}
+function onChoice(i){
+  if(phase!=="choice") return;
+  const pick=curMap[i], rt=performance.now()-choiceT0;
+  cdStop(); phase="judging";
+  $("#choices").classList.remove("on");
+  const r=rec();
+  if(pick.correct){
+    const fast=rt<=FAST_MS;
+    if(r.first===null){ r.first=fast?"fast":"ok"; r.firstPickText=pick.text; r.rt=rt; }
+    S.score+=100+(fast?50:0);
+    $("#ch-"+i).classList.add("picked-ok");
+    if(fast){ sfx.fast(); showJudge("ok","침착·신속",(rt/1000).toFixed(2)+"초 — 보너스 +50"); }
+    else    { sfx.ok();   showJudge("ok","생존 판단",(rt/1000).toFixed(2)+"초"); }
+    setTimeout(()=>advance(),1150);
+  }else{
+    if(r.first===null){ r.first="bad"; r.firstPickText=pick.text; r.rt=rt; }
+    r.wrong++;
+    $("#ch-"+i).classList.add("picked-bad");
+    sfx.bad();
+    wrongResult();
+  }
+}
+function onTimeout(){
+  if(phase!=="choice") return;
+  phase="judging";
+  $("#choices").classList.remove("on");
+  const r=rec();
+  if(r.first===null){ r.first="hesi"; r.firstPickText="(머뭇거림 — 4초 초과)"; }
+  r.hesi++;
+  loseO2(20); sfx.stumble();
+  showJudge("hesi","머뭇거렸다","여진에 흔들렸다 — 안전 −20%");
+  if(S.o2<=0){ setTimeout(()=>collapse(),1100); return; }
+  setTimeout(()=>{ phase="watch"; playScene(true); },1400);
+}
+function wrongResult(){
+  const sc=SCENES[S.idx], fx=sc.wrongFx;
+  loseO2(35);
+  $("#sit-cap").classList.remove("on");
+  const showCap=()=>{
+    $("#wrongcap-tx").innerHTML=fx.text;
+    $("#wrongcap").classList.add("on");
+  };
+  tense(false);
+  if(fx.type==="video"){ setBg(fx.video); setTimeout(showCap,650); if(fx.snd) sfx[fx.snd](); }
+  else if(fx.type==="shake"){
+    $("#scr-stage").classList.remove("shake"); void $("#scr-stage").offsetWidth;
+    $("#scr-stage").classList.add("shake"); sfx.stumble(); showCap();
+  }
+  else if(fx.type==="glass"){ sfx.glasshit(); showCap(); }
+  else showCap(); /* redden — flash가 이미 표현 */
+  if(S.o2<=0){ setTimeout(()=>collapse(),1600); return; }
+  setTimeout(()=>{
+    modal({
+      tag:"오답 — 안전 −35%", tagCls:"danger",
+      title:"그 선택이 왜 위험했나",
+      body:"", rule:sc.rule, why:sc.why,
+      btn:"다시 선택한다",
+      cb:()=>{ phase="watch"; playScene(true); }
+    });
+  },1900);
+}
+function advance(){
+  S.idx++;
+  if(S.idx>=SCENES.length){ finish(); return; }
+  playScene(false);
+}
+function collapse(){
+  cdStop(); phase="over";
+  sfx.alarmOff(); sfx.collapse();
+  $("#wrongcap").classList.remove("on");
+  modal({
+    tag:"안전 0%", tagCls:"danger",
+    title:"낙하물에 부상당했다 — 쓰러졌다",
+    body:"실전이라면 여기까지였다.<br><b>판단이 빨라야 안전 게이지가 남는다.</b> 처음부터 다시 간다.",
+    btn:"처음부터 재도전",
+    cb:()=>restart()
+  });
+}
+function restart(){
+  S.o2=100; S.score=0; S.idx=0; S.records.length=0;
+  setO2(100);
+  go("#scr-stage");
+  sfx.alarmOn();
+  playScene(false);
+}
+
+/* ══════════ 결과 ══════════ */
+const BADGE={fast:["b-fast","즉답 정답"],ok:["b-ok","정답"],bad:["b-bad","오답 후 학습"],hesi:["b-hesi","머뭇거림"]};
+function finish(){
+  phase="done";
+  sfx.alarmOff(); sfx.alert();
+  const wrongs=S.records.reduce((a,r)=>a+r.wrong,0);
+  const hesis=S.records.reduce((a,r)=>a+r.hesi,0);
+  const miss=wrongs+hesis;
+  const allFast=S.records.every(r=>r.first==="fast");
+  const grade = miss===0 ? (allFast?"S":"A") : miss<=2 ? "B" : "C";
+  $("#r-grade").textContent=grade;
+  $("#r-title").textContent = miss===0 ? "완벽한 판단 — 흔들림 속에서도 침착했다" : "무사히 운동장까지 대피했다";
+  $("#r-sub").innerHTML="점수 <b>"+S.score+"점</b> · 오답 "+wrongs+"회 · 머뭇거림 "+hesis+"회"
+    +(grade==="S"?"<br>전 장면 1.5초 이내 즉답 — 몸이 기억하고 있다":"");
+  $("#r-o2pct").textContent=Math.round(S.o2)+"%";
+  const rb=$("#r-o2bar");
+  rb.style.width=S.o2+"%";
+  rb.style.background = S.o2>60?"var(--o2hi)":S.o2>35?"var(--o2mid)":"var(--o2lo)";
+
+  $("#r-tl").innerHTML=S.records.map((r,i)=>{
+    const sc=SCENES[i],[bc,bt]=BADGE[r.first],flag=r.first==="bad"||r.first==="hesi";
+    return '<div class="tl-row'+(flag?' flag':'')+'">'
+      +'<div class="tl-top"><span class="loc">'+sc.id+' · '+sc.loc+'</span>'
+      +'<span class="tl-badge '+bc+'">'+bt+(r.rt!=null&&r.first!=="hesi"?' · '+(r.rt/1000).toFixed(2)+'초':'')+'</span></div>'
+      +'<div class="tl-pick">내 첫 선택 — '+(flag?'<span class="bad">':'<b>')+r.firstPickText+(flag?'</span>':'</b>')
+      +(flag?'<br>정답 — <b>'+sc.good+'</b>':'')+'</div>'
+      +'<div class="tl-rule"><b>'+sc.rule+'</b><br>'+sc.why+'</div></div>';
+  }).join("");
+
+  const flagged=S.records.map((r,i)=>({r,sc:SCENES[i]})).filter(x=>x.r.wrong>0||x.r.hesi>0);
+  $("#r-tnote").innerHTML = flagged.length
+    ? '<div class="t-note">⚑ <b>'+flagged.map(x=>x.sc.id+' '+x.sc.loc).join(", ")
+      +'</b>에서 흔들렸다 — 실제 훈련 때 이 지점을 한 번 더 확인하자.</div>'
+    : "";
+  go("#scr-result");
+}
+
+/* ══════════ 시작 ══════════ */
+[0,1].forEach(i=>$("#ch-"+i).addEventListener("click",()=>onChoice(i)));
+$("#btn-start").addEventListener("click",()=>{ restart(); });
+$("#btn-again").addEventListener("click",()=>{ restart(); });
+
+/* 영상 프리로드 */
+SCENES.forEach(sc=>{
+  const v=document.createElement("video"); v.src=sc.video; v.preload="auto"; v.muted=true; v.style.display="none";
+  document.body.appendChild(v);
+  if(sc.wrongFx.video){
+    const v2=document.createElement("video"); v2.src=sc.wrongFx.video; v2.preload="auto"; v2.muted=true; v2.style.display="none";
+    document.body.appendChild(v2);
+  }
+});
+setBg(SCENES[0].video,true);
+</script>
+</body>
+</html>
