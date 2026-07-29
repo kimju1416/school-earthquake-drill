@@ -191,7 +191,7 @@ button{font-family:inherit;border:0;cursor:pointer;background:none;color:inherit
 <!-- ═══════════ 인트로 ═══════════ -->
 <section class="screen on" id="scr-intro">
   <div class="wrap">
-    <div class="intro-label">학교 대피훈련 시리즈 ③ 지진</div>
+    <div class="intro-label">학교 모의 대피훈련 ② 지진</div>
     <h1 class="intro-title">흔들림이<br><em>멈출 때</em>까지<small>당황해서 뛰면, 그게 더 위험하다</small></h1>
     <p class="intro-sub">지금은 수업 중. 갑자기 <b>땅이 흔들린다.</b><br>교실에서 운동장까지 — <b>여섯 번의 판단</b>이 너를 기다린다.</p>
     <div class="howto">
@@ -302,12 +302,12 @@ const SCENES = [
     rule:"지진 시 엘리베이터는 절대 타지 않는다",
     why:"정전으로 멈추면 그대로 갇힌다. 무조건 계단이다." },
   { id:"S4", loc:"계단실", video:"video/s4.mp4",
-    sit:"계단실 — 바닥에 <b>깨진 유리조각</b>이 흩어져 있다. 다급한 발소리가 울린다.",
-    good:"신발을 신고 질서있게 내려간다",
-    badc:"맨발로 서둘러 내려간다",
-    wrongFx:{ type:"glass", text:"윽 — <b>유리 조각을 밟아 발을 다쳤다</b>" },
-    rule:"신발을 신고, 질서있게 우측통행으로 내려간다",
-    why:"지진 후 바닥엔 깨진 유리·잔해가 많다. 서두르다 다치면 대피가 더 늦어진다." },
+    sit:"계단실로 내려가는 중 — 발밑에 <b>깨진 유리조각</b>이 보인다. 신발도 못 신은 맨발이다.",
+    good:"그대로 발밑을 살피며 신속히 내려간다",
+    badc:"신발을 챙기러 교실로 돌아간다",
+    wrongFx:{ type:"shake", text:"쿵 — <b>되돌아가려던 순간, 여진이 덮쳤다</b>" },
+    rule:"무엇이든 챙기러 절대 되돌아가지 않는다 — 발밑만 살피며 그대로 이동한다",
+    why:"신발을 챙기러 되돌아가는 그 몇 초가 여진·낙하물 위험을 키운다. 유리조각은 피해가며 걸으면 된다." },
   { id:"S5", loc:"건물 밖 출구", video:"video/s5.mp4",
     sit:"건물 밖으로 나왔다. 왼쪽엔 <b>담장과 간판이 위태롭게 흔들리고</b>, 오른쪽엔 넓은 공터가 있다.",
     good:"낙하물 없는 넓은 공터로 이동한다",
@@ -359,6 +359,7 @@ const sfx = {
   stumble(){ play(SND.stumble); },
   collapse(){ play(SND.collapse); },
   alert(){ play(SND.alert); },
+  alertStop(){ SND.alert.pause(); SND.alert.currentTime=0; },
   elevatorhum(){ play(SND.elevatorhum); },
 };
 $("#btn-mute").addEventListener("click",()=>{
@@ -579,6 +580,7 @@ function collapse(){
 function restart(){
   S.o2=100; S.score=0; S.idx=0; S.records.length=0;
   setO2(100);
+  sfx.alertStop();
   go("#scr-stage");
   sfx.alarmOn();
   playScene(false);
